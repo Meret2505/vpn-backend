@@ -1,0 +1,145 @@
+{
+  "info": {
+    "_postman_id": "92bfa9ec-34fa-4872-a8c9-abcdef123456",
+    "name": "VPN Admin with News",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create VPN Type (icon upload)",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "WireGuard", "type": "text" },
+            {
+              "key": "icon",
+              "type": "file",
+              "src": "/absolute/path/to/icon.png"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/vpn/type",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["vpn", "type"]
+        }
+      }
+    },
+    {
+      "name": "Upload VPN Configs (max 15)",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "typeId",
+              "value": "REPLACE_WITH_TYPE_ID",
+              "type": "text"
+            },
+            {
+              "key": "files",
+              "type": "file",
+              "src": [
+                "/absolute/path/to/config1.ovpn",
+                "/absolute/path/to/config2.ovpn"
+              ]
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/vpn/upload-configs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["vpn", "upload-configs"]
+        }
+      }
+    },
+    {
+      "name": "Get All VPN Types",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/vpn/types",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["vpn", "types"]
+        }
+      }
+    },
+    {
+      "name": "Get All VPN Configs",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/vpn/list",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["vpn", "list"]
+        }
+      }
+    },
+    {
+      "name": "Create News (image upload)",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "title", "value": "VPN Sale: 50% Off!", "type": "text" },
+            {
+              "key": "url",
+              "value": "https://example.com/sale",
+              "type": "text"
+            },
+            {
+              "key": "image",
+              "type": "file",
+              "src": "/absolute/path/to/news-image.png"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/news",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["news"]
+        }
+      }
+    },
+    {
+      "name": "Get All News",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/news",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["news"]
+        }
+      }
+    },
+    {
+      "name": "Delete News (by ID)",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:3000/news/REPLACE_WITH_NEWS_ID",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["news", "REPLACE_WITH_NEWS_ID"]
+        }
+      }
+    }
+  ]
+}

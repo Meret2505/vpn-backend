@@ -1,0 +1,39 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { VpnType } from './vpn/vpn-type.entity';
+import { VpnConfig } from './vpn/vpn-config.entity';
+import { News } from './news/news.entity';
+import { VpnModule } from './vpn/vpn.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { NewsModule } from './news/news.module';
+import { AdminModule } from './admin/admin.module';
+import { Admin } from './admin/admin.entity';
+
+@Module({
+  imports: [
+    // Static files (для загрузки картинок и конфигов)
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      serveRoot: '/uploads',
+    }),
+
+    // TypeORM
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: 'meret0525',
+      database: 'vpn_db',
+      entities: [VpnType, VpnConfig, News, Admin],
+      synchronize: true,
+    }),
+
+    // Наши модули
+    VpnModule,
+    NewsModule,
+    AdminModule,
+  ],
+})
+export class AppModule {}
