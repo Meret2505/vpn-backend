@@ -21,10 +21,10 @@ import { Admin } from './admin/admin.entity';
     // TypeORM
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
+      host: 'dpg-d14sna49c44c73dmc3g0-a',
       port: 5432,
-      username: 'postgres',
-      password: 'meret0525',
+      username: 'vpn_db_user',
+      password: 'SeDLhFeToNL6KONhKu1E6OaX8gyMVHft',
       database: 'vpn_db',
       entities: [VpnType, VpnConfig, News, Admin],
       synchronize: true,
