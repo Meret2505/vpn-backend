@@ -9,6 +9,7 @@ import {
   UseGuards,
   Param,
   Res,
+  Delete,
 } from '@nestjs/common';
 import { VpnService } from './vpn.service';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
@@ -18,11 +19,13 @@ import { extname, join } from 'path';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 
 @Controller('vpn')
 export class VpnController {
   constructor(private readonly vpnService: VpnService) {}
 
+  // Create Type
   @UseGuards(AuthGuard('jwt'))
   @Post('type')
   @UseInterceptors(
@@ -44,6 +47,7 @@ export class VpnController {
     return this.vpnService.createType(name, iconUrl);
   }
 
+  // Upload Configs
   @UseGuards(AuthGuard('jwt'))
   @Post('upload-configs')
   @UseInterceptors(
@@ -64,16 +68,19 @@ export class VpnController {
     return this.vpnService.uploadConfigs(typeId, files);
   }
 
+  // Get All Types
   @Get('types')
   async getTypes() {
     return this.vpnService.getAllTypes();
   }
 
+  // Get All Configs
   @Get('list')
   getConfigs() {
     return this.vpnService.getAllConfigs();
   }
 
+  // Download Config
   @Get('download/:filename')
   downloadConfig(@Param('filename') filename: string, @Res() res: Response) {
     const file = join(__dirname, '..', '..', 'uploads', 'configs', filename);
@@ -83,5 +90,19 @@ export class VpnController {
     });
     const stream = createReadStream(file);
     return stream.pipe(res);
+  }
+
+  // DELETE VPN Type (with its configs)
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('type/:id')
+  async deleteType(@Param('id') id: string) {
+    return this.vpnService.deleteType(id);
+  }
+
+  // DELETE Single Config
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('config/:id')
+  async deleteConfig(@Param('id') id: string) {
+    return this.vpnService.deleteConfig(id);
   }
 }

@@ -8,6 +8,7 @@ import {
   UseGuards,
   Param,
   Res,
+  Delete,
 } from '@nestjs/common';
 import { NewsService } from './news.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -48,5 +49,11 @@ export class NewsController {
   @Get('list')
   getAll() {
     return this.newsService.getAll();
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    return this.newsService.deleteNews(id);
   }
 }
