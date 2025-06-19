@@ -5,15 +5,40 @@ import { VpnConfig } from './vpn-config.entity';
 import { Repository } from 'typeorm';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import supabase from 'src/supabase';
+import * as fs from 'fs';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class VpnService {
   constructor(
     @InjectRepository(VpnType) private vpnTypeRepo: Repository<VpnType>,
     @InjectRepository(VpnConfig) private vpnConfigRepo: Repository<VpnConfig>,
+    private readonly supabase: SupabaseClient, // ✅ inject supabase
   ) {}
 
-  async createType(name: string, iconUrl: string | null) {
+  async createType(name: string, icon: Express.Multer.File) {
+    let iconUrl: string | null = null;
+
+    if (icon) {
+      const fileStream = fs.createReadStream(icon.path);
+      const filename = `icons/${Date.now()}-${icon.originalname}`;
+
+      const { data, error } = await this.supabase.storage
+        .from('vpn-assets')
+        .upload(filename, fileStream, {
+          contentType: icon.mimetype,
+          upsert: true,
+        });
+
+      if (error) {
+        throw new Error(`Failed to upload icon: ${error.message}`);
+      }
+
+      iconUrl = this.supabase.storage.from('vpn-assets').getPublicUrl(filename)
+        .data.publicUrl;
+    }
+
     const type = this.vpnTypeRepo.create({ name, iconUrl });
     return this.vpnTypeRepo.save(type);
   }
@@ -22,14 +47,36 @@ export class VpnService {
     const type = await this.vpnTypeRepo.findOne({ where: { id: typeId } });
     if (!type) throw new Error('VPN type not found');
 
-    const configs = files.slice(0, 15).map((file) =>
-      this.vpnConfigRepo.create({
+    const uploadedConfigs: VpnConfig[] = [];
+
+    for (const file of files.slice(0, 15)) {
+      const { data, error } = await supabase.storage
+        .from('vpn-postgres') // You must create this bucket in Supabase Storage
+        .upload(
+          `configs/${Date.now()}-${file.originalname}`,
+          fs.createReadStream(file.path),
+          {
+            contentType: file.mimetype,
+            upsert: true,
+          },
+        );
+
+      if (error) throw new Error(`Failed to upload: ${error.message}`);
+
+      const publicUrl = supabase.storage
+        .from('vpn-postgres')
+        .getPublicUrl(data.path).data.publicUrl;
+
+      const config = this.vpnConfigRepo.create({
         filename: file.originalname,
-        fileUrl: `/uploads/configs/${file.filename}`,
+        fileUrl: publicUrl,
         type,
-      }),
-    );
-    return this.vpnConfigRepo.save(configs);
+      });
+
+      uploadedConfigs.push(config);
+    }
+
+    return this.vpnConfigRepo.save(uploadedConfigs);
   }
 
   async getAllTypes() {
@@ -49,28 +96,25 @@ export class VpnService {
 
     if (!type) throw new Error('VPN type not found');
 
-    // Delete associated config files from disk
     for (const config of type.configs) {
       if (!config.fileUrl) continue;
 
-      const filename = config.fileUrl.split('/').pop();
-      if (!filename) continue;
-
-      const filePath = join(
-        __dirname,
-        '..',
-        '..',
-        'uploads',
-        'configs',
-        filename,
-      );
-
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
+      // Extract the relative path from public URL
+      const storagePath = this.extractStoragePath(config.fileUrl);
+      if (storagePath) {
+        await this.supabase.storage.from('vpn-icons').remove([storagePath]);
       }
     }
 
-    // Delete database records
+    // Optionally delete the icon too
+    if (type.iconUrl) {
+      const iconPath = this.extractStoragePath(type.iconUrl);
+      if (iconPath) {
+        await this.supabase.storage.from('vpn-icons').remove([iconPath]);
+      }
+    }
+
+    // Delete from DB
     await this.vpnConfigRepo.delete(type.configs.map((c) => c.id));
     await this.vpnTypeRepo.delete(id);
 
@@ -86,29 +130,21 @@ export class VpnService {
 
     if (!config) throw new Error('Config not found');
 
-    const parts = config.fileUrl.split('/');
-    const filename = parts.pop();
-
-    if (!filename) {
-      throw new Error(`Failed to extract filename from file URL`);
-    }
-
-    const filePath = join(
-      __dirname,
-      '..',
-      '..',
-      'uploads',
-      'configs',
-      filename,
-    );
-
-    // Delete file from disk
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
+    const storagePath = this.extractStoragePath(config.fileUrl);
+    if (storagePath) {
+      await this.supabase.storage.from('vpn-icons').remove([storagePath]);
     }
 
     await this.vpnConfigRepo.delete(id);
 
     return { message: 'Config deleted successfully' };
+  }
+
+  private extractStoragePath(publicUrl: string): string | null {
+    const parts = publicUrl.split('/object/public/vpn-icons/');
+    if (parts.length === 2) {
+      return parts[1];
+    }
+    return null;
   }
 }

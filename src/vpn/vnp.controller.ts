@@ -31,7 +31,7 @@ export class VpnController {
   @UseInterceptors(
     FileInterceptor('icon', {
       storage: diskStorage({
-        destination: './uploads/icons',
+        destination: './uploads/icons', // still needed for temporary storage
         filename: (req, file, cb) => {
           const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
           cb(null, uniqueName);
@@ -43,8 +43,8 @@ export class VpnController {
     @UploadedFile() icon: Express.Multer.File,
     @Body('name') name: string,
   ) {
-    const iconUrl = icon ? `/uploads/icons/${icon.filename}` : null;
-    return this.vpnService.createType(name, iconUrl);
+    // ✅ Now pass the file instead of a string URL
+    return this.vpnService.createType(name, icon);
   }
 
   // Upload Configs

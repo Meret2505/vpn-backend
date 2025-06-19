@@ -41,9 +41,7 @@ export class NewsController {
     @Body('title') title: string,
     @Body('downloadUrl') downloadUrl: string,
   ) {
-    const imageUrl = image ? `/uploads/news-images/${image.filename}` : null;
-
-    return this.newsService.createNews(title, imageUrl, downloadUrl);
+    return this.newsService.createNews(title, image, downloadUrl);
   }
 
   @Get('list')
