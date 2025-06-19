@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { News } from './news.entity';
 import { Repository } from 'typeorm';
@@ -9,7 +9,7 @@ import { SupabaseClient } from '@supabase/supabase-js'; // Make sure you have Su
 export class NewsService {
   constructor(
     @InjectRepository(News) private newsRepo: Repository<News>,
-    private readonly supabase: SupabaseClient, // Inject this in your module setup
+    @Inject('SUPABASE_CLIENT') private supabase: SupabaseClient,
   ) {}
 
   async createNews(

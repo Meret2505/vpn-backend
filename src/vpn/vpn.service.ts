@@ -1,10 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VpnType } from './vpn-type.entity';
 import { VpnConfig } from './vpn-config.entity';
 import { Repository } from 'typeorm';
-import { existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
 import supabase from 'src/supabase';
 import * as fs from 'fs';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -14,7 +12,7 @@ export class VpnService {
   constructor(
     @InjectRepository(VpnType) private vpnTypeRepo: Repository<VpnType>,
     @InjectRepository(VpnConfig) private vpnConfigRepo: Repository<VpnConfig>,
-    private readonly supabase: SupabaseClient, // ✅ inject supabase
+    @Inject('SUPABASE_CLIENT') private supabase: SupabaseClient, // ✅ here
   ) {}
 
   async createType(name: string, icon: Express.Multer.File) {
