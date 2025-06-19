@@ -25,7 +25,7 @@ export class VpnService {
       const filename = `icons/${Date.now()}-${icon.originalname}`;
 
       const { data, error } = await this.supabase.storage
-        .from('vpn-assets')
+        .from('vpn-icons')
         .upload(filename, fileStream, {
           contentType: icon.mimetype,
           upsert: true,
@@ -35,7 +35,7 @@ export class VpnService {
         throw new Error(`Failed to upload icon: ${error.message}`);
       }
 
-      iconUrl = this.supabase.storage.from('vpn-assets').getPublicUrl(filename)
+      iconUrl = this.supabase.storage.from('vpn-icons').getPublicUrl(filename)
         .data.publicUrl;
     }
 
