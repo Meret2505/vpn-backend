@@ -1,14 +1,22 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VpnType } from './vpn-type.entity';
 import { VpnConfig } from './vpn-config.entity';
 import { Repository } from 'typeorm';
-import supabase from 'src/supabase';
 import * as fs from 'fs';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class VpnService {
+  private readonly logger = new Logger(VpnService.name);
+
   constructor(
     @InjectRepository(VpnType) private vpnTypeRepo: Repository<VpnType>,
     @InjectRepository(VpnConfig) private vpnConfigRepo: Repository<VpnConfig>,
@@ -18,9 +26,13 @@ export class VpnService {
   async createType(name: string, icon: Express.Multer.File) {
     let iconUrl: string | null = null;
 
+    this.logger.log(`Creating VPN type with name: ${name}`);
+
     if (icon) {
       const fileStream = fs.createReadStream(icon.path);
       const filename = `icons/${Date.now()}-${icon.originalname}`;
+
+      this.logger.log(`Uploading icon to Supabase: ${filename}`);
 
       const { data, error } = await this.supabase.storage
         .from('vpn-icons')
@@ -30,38 +42,61 @@ export class VpnService {
         });
 
       if (error) {
-        throw new Error(`Failed to upload icon: ${error.message}`);
+        this.logger.error('Supabase icon upload failed:', error.message);
+        throw new InternalServerErrorException(
+          `Icon upload failed: ${error.message}`,
+        );
       }
 
       iconUrl = this.supabase.storage.from('vpn-icons').getPublicUrl(filename)
         .data.publicUrl;
+      this.logger.log(`Icon uploaded successfully: ${iconUrl}`);
     }
 
-    const type = this.vpnTypeRepo.create({ name, iconUrl });
-    return this.vpnTypeRepo.save(type);
+    try {
+      const type = this.vpnTypeRepo.create({ name, iconUrl });
+      const saved = await this.vpnTypeRepo.save(type);
+      this.logger.log(`VPN type saved with ID: ${saved.id}`);
+      return saved;
+    } catch (err) {
+      this.logger.error('DB insert failed for VPN type', err.message);
+      throw new InternalServerErrorException(
+        'Failed to create VPN type in database',
+      );
+    }
   }
 
   async uploadConfigs(typeId: string, files: Express.Multer.File[]) {
+    this.logger.log(`Uploading configs for VPN type: ${typeId}`);
+
     const type = await this.vpnTypeRepo.findOne({ where: { id: typeId } });
-    if (!type) throw new Error('VPN type not found');
+    if (!type) {
+      this.logger.warn(`VPN type not found: ${typeId}`);
+      throw new NotFoundException(`VPN type with ID ${typeId} not found`);
+    }
 
     const uploadedConfigs: VpnConfig[] = [];
 
     for (const file of files.slice(0, 15)) {
-      const { data, error } = await supabase.storage
-        .from('vpn-postgres') // You must create this bucket in Supabase Storage
-        .upload(
-          `configs/${Date.now()}-${file.originalname}`,
-          fs.createReadStream(file.path),
-          {
-            contentType: file.mimetype,
-            upsert: true,
-          },
+      const filename = `configs/${Date.now()}-${file.originalname}`;
+
+      this.logger.log(`Uploading config: ${filename}`);
+
+      const { data, error } = await this.supabase.storage
+        .from('vpn-postgres')
+        .upload(filename, fs.createReadStream(file.path), {
+          contentType: file.mimetype,
+          upsert: true,
+        });
+
+      if (error) {
+        this.logger.error(`Upload failed for ${filename}`, error.message);
+        throw new BadRequestException(
+          `Failed to upload config: ${error.message}`,
         );
+      }
 
-      if (error) throw new Error(`Failed to upload: ${error.message}`);
-
-      const publicUrl = supabase.storage
+      const publicUrl = this.supabase.storage
         .from('vpn-postgres')
         .getPublicUrl(data.path).data.publicUrl;
 
@@ -72,9 +107,19 @@ export class VpnService {
       });
 
       uploadedConfigs.push(config);
+      this.logger.log(`Config uploaded: ${publicUrl}`);
     }
 
-    return this.vpnConfigRepo.save(uploadedConfigs);
+    try {
+      const saved = await this.vpnConfigRepo.save(uploadedConfigs);
+      this.logger.log(`Saved ${saved.length} configs`);
+      return saved;
+    } catch (err) {
+      this.logger.error('Failed to save configs to DB', err.message);
+      throw new InternalServerErrorException(
+        'Failed to save VPN configs to the database',
+      );
+    }
   }
 
   async getAllTypes() {
