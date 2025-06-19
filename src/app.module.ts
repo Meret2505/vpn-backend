@@ -9,6 +9,7 @@ import { join } from 'path';
 import { NewsModule } from './news/news.module';
 import { AdminModule } from './admin/admin.module';
 import { Admin } from './admin/admin.entity';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -29,7 +30,9 @@ import { Admin } from './admin/admin.entity';
       entities: [VpnType, VpnConfig, News, Admin],
       synchronize: true,
     }),
-
+    ConfigModule.forRoot({
+      isGlobal: true, // So you can use it everywhere
+    }),
     // Наши модули
     VpnModule,
     NewsModule,
