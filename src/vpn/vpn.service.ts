@@ -107,18 +107,18 @@ export class VpnService {
         );
       }
 
-      const publicUrl = this.supabase.storage
-        .from('vpn-postgres')
-        .getPublicUrl(data.path).data.publicUrl;
+      const downloadUrl =
+        this.supabase.storage.from('vpn-postgres').getPublicUrl(filename).data
+          .publicUrl + `?download=${file.originalname}`;
 
       const config = this.vpnConfigRepo.create({
         filename: file.originalname,
-        fileUrl: publicUrl,
+        fileUrl: downloadUrl, // ✅ store full downloadable link
         type,
       });
 
       uploadedConfigs.push(config);
-      this.logger.log(`Config uploaded: ${publicUrl}`);
+      this.logger.log(`Config uploaded: ${downloadUrl}`);
     }
 
     try {
@@ -203,15 +203,16 @@ export class VpnService {
     return { message: 'Config deleted successfully' };
   }
 
-  private extractStoragePath(
-    publicUrl: string,
-    bucketName: string,
-  ): string | null {
-    const prefix = `/object/public/${bucketName}/`;
-    const parts = publicUrl.split(prefix);
+  private extractStoragePath(publicUrl: string, bucket: string): string | null {
+    const basePath = `/storage/v1/object/public/${bucket}/`;
+    const parts = publicUrl.split(basePath);
+
     if (parts.length === 2) {
-      return parts[1];
+      const pathWithQuery = parts[1];
+      const cleanPath = pathWithQuery.split('?')[0]; // remove ?download=...
+      return cleanPath;
     }
+
     return null;
   }
 }
